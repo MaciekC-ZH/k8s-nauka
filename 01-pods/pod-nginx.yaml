@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pierwszy-pod
+  labels:
+    app: demo
+spec:
+  containers:
+    - name: nginx-kontener
+      image: nginx:alpine
+      ports:
+        - containerPort: 80
