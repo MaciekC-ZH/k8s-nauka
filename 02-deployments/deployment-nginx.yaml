@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moj-deployment
+  labels:
+    app: moja-aplikacja
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: moja-aplikacja
+  template:
+    metadata:
+      labels:
+        app: moja-aplikacja
+    spec:
+      containers:
+        - name: nginx-kontener
+          image: httpd:alpine
+          ports:
+            - containerPort: 80

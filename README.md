@@ -102,3 +102,56 @@ kubectl describe pod <nazwa-poda>
 # Usunięcie Poda
 kubectl delete pod <nazwa-poda>
 ```
+## 📌 Etap 2: Deploymenty, Skalowanie i Zarządzanie Wydaniami
+
+### 1. Kluczowe koncepcje
+
+* **Dlaczego nie używamy „nagich” Podów:** 
+  Pojedynczy Pod (`kind: Pod`) jest jednostką śmiertelną (ephemeral) bez mechanizmu samoleczenia. Po awarii procesu lub usunięciu węzła Pod umiera na stałe.
+* **Rola Deploymentu:**
+  Zarządza deklaratywnym stanem aplikacji (*Desired State*). Zapewnia **samoleczenie** (odtworzenie uszkodzonych instancji) oraz **skalowanie**.
+* **Deployment vs ReplicaSet:**
+  Deployment zarządza wersjami i strategią wdrożeń (Rolling Update), tworząc pod spodem obiekt **ReplicaSet**, który bezpośrednio odpowiada za pilnowanie stałej liczby działających Podów (`replicas: N`).
+* **Rolling Update (Wdrożenie bez przestojów):**
+  Domyślna strategia w K8s: najpierw uruchamiany jest nowy Pod z nową wersją obrazu, czeka na osiągnięcie gotowości, a dopiero potem ubijany jest stary Pod. Użytkownik nie odczuwa przerwy w działaniu.
+* **Configuration Drift (Rozjazd stanu):**
+  Użycie doraźnego cofnięcia `kubectl rollout undo` zmienia stan w klastrze, ale nie zmienia pliku `.yaml` na dysku. Kolejne wywołanie `kubectl apply` nadpisze cofniętą wersję wartością z pliku. W metodyce GitOps po awaryjnym cofnięciu w klastrze zawsze należy wykonać `git revert` w repozytorium.
+
+---
+
+### 2. Przykładowy manifest Deploymentu
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moj-deployment
+  labels:
+    app: moja-aplikacja
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: moja-aplikacja
+  template:
+    metadata:
+      labels:
+        app: moja-aplikacja
+    spec:
+      containers:
+        - name: app-kontener
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+```
+| Polecenie                                     | Zastosowanie                                                      |
+|-----------------------------------------------|-------------------------------------------------------------------|
+| kubectl apply -f <plik.yaml>                  | Wdrożenie lub aktualizacja deklaratywna zasobów z pliku           |
+| kubectl get deployments                       | Lista aktywnych Deploymentów, liczba żądanych i dostępnych replik |
+| kubectl get pods                              | Lista Podów (zwracaj uwagę na kolumny STATUS oraz AGE)            |
+| kubectl delete pod <nazwa-poda>               | Ręczne usunięcie Poda (test mechanizmu samoleczenia)              |
+| kubectl port-forward pod/<nazwa> 8080:80      | Tymczasowy tunel diagnostyczny z localhost do portu w Podzie      |
+| kubectl scale deployment <nazwa> --replicas=5 | Doraźne wyskalowanie liczby Podów w locie                         |
+| kubectl rollout status deployment <nazwa>     | Śledzenie procesu wymiany Podów na żywo podczas aktualizacji      |
+| kubectl rollout history deployment <nazwa>    | Sprawdzenie historii wdrożonych rewizji                           |
+| kubectl rollout undo deployment <nazwa>       | Awaryjne wycofanie do poprzedniej rewizji                         |
