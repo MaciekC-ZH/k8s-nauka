@@ -155,3 +155,28 @@ spec:
 | kubectl rollout status deployment <nazwa>     | Śledzenie procesu wymiany Podów na żywo podczas aktualizacji      |
 | kubectl rollout history deployment <nazwa>    | Sprawdzenie historii wdrożonych rewizji                           |
 | kubectl rollout undo deployment <nazwa>       | Awaryjne wycofanie do poprzedniej rewizji                         |
+
+## 📌 Etap 3: Konfiguracja (ConfigMap & Secret) i Pamięć Trwała (PV & PVC)
+
+### 1. Separacja konfiguracji (12-Factor App)
+* **Zasada jednego obrazu:** Ten sam obraz kontenera działa na `dev`, `staging` i `prod`. Nigdy nie hardkodujemy zmiennych ani haseł w obrazie.
+* **ConfigMap:** Przechowuje jawne parametry konfiguracyjne (np. URL-e, porty, flagi środowiskowe).
+* **Secret:** Przechowuje dane poufne (hasła, tokeny, klucze API) – w manifeście podawane jako `stringData` (kodowane automatycznie do base64).
+* **Wstrzykiwanie:** Wartości trafiają do kontenera przez sekcję `env` (`configMapKeyRef` / `secretKeyRef`) lub jako zamontowane pliki w wolumenie.
+
+### 2. Pamięć trwała (Storage)
+* **Problem ulotności:** Kontenery w Podach są domyślnie bezstanowe (*ephemeral*). Po awarii Poda wszystkie dane na dysku znikają.
+* **PersistentVolume (PV):** Fizyczny zasób dyskowy (np. wolumen w chmurze, katalog na węźle).
+* **PersistentVolumeClaim (PVC):** Deklaratywne żądanie pamięci przez aplikację (np. „potrzebuję 1Gi w trybie ReadWriteOnce”).
+* **Cykl życia:** K8s automatycznie paruje PVC z PV (`Bound`). Gdy Deployment podepnie PVC jako wolumen, dane w zamontowanym katalogu przetrwają restarty, skalowanie i zabicie Poda.
+
+---
+
+### Podręczne komendy diagnostyczne
+
+| Polecenie                                          | Zastosowanie                                                      |
+| ---------------------------------------------------|-------------------------------------------------------------------|
+| `kubectl get cm,secret`                            | Podgląd utworzonych obiektów ConfigMap i Secret                   |
+| `kubectl exec deploy/<nazwa> -- env`               | Sprawdzenie zmiennych środowiskowych wewnątrz kontenera           |
+| `kubectl get pvc,pv`                               | Weryfikacja stanu roszczeń dyskowych (`STATUS: Bound`)            |
+| `kubectl exec deploy/<nazwa> -- sh -c "<komenda>"` | Wykonanie szybkiego polecenia w kontenerze (np. inspekcja plików) |
