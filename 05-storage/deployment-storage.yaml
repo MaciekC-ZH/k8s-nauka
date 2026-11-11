@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-z-dyskiem
+  labels:
+    app: storage-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-demo
+  template:
+    metadata:
+      labels:
+        app: storage-demo
+    spec:
+      volumes:
+        - name: staly-magazyn
+          persistentVolumeClaim:
+            claimName: moj-dysk-pvc
+      containers:
+        - name: app-kontener
+          image: alpine
+          # Kontener po starcie po prostu czeka, żebyśmy mogli wejść do środka
+          command: ["sh", "-c", "sleep 3600"]
+          volumeMounts:
+            - name: staly-magazyn
+              mountPath: /dane
