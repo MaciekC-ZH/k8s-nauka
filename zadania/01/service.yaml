@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres-project
+  ports:
+    - protocol: TCP
+      port: 5432 # Port na zewnątrz (na którym nasłuchuje Service)
+      targetPort: 5432 # Port wewnątrz kontenera (na którym działa nginx/httpd)
