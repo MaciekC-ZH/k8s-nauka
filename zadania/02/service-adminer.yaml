@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminer-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: adminer-project
+  ports:
+    - protocol: TCP
+      port: 8081 # Port na zewnątrz (na którym nasłuchuje Service)
+      targetPort: 8080 # Port wewnątrz kontenera (na którym działa nginx/httpd)

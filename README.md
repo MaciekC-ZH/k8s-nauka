@@ -180,3 +180,61 @@ spec:
 | `kubectl exec deploy/<nazwa> -- env`               | Sprawdzenie zmiennych środowiskowych wewnątrz kontenera           |
 | `kubectl get pvc,pv`                               | Weryfikacja stanu roszczeń dyskowych (`STATUS: Bound`)            |
 | `kubectl exec deploy/<nazwa> -- sh -c "<komenda>"` | Wykonanie szybkiego polecenia w kontenerze (np. inspekcja plików) |
+
+## 📌 Etap 4: Projekt Warsztatowy – Aplikacja Dwuwarstwowa (Adminer + PostgreSQL)
+
+### 1. Architektura rozwiązania
+Projekt łączy wszystkie podstawowe mechanizmy Kubernetesa w jeden działający system składający się z warstwy danych oraz bezstanowej warstwy aplikacyjnej:
+
+```text
+[ Przeglądarka: localhost:8081 ]
+              │
+              ▼
+┌───────────────────────────────┐
+│  Service: adminer-service     │  (type: LoadBalancer, port 8081 -> 8080)
+└──────────────┬────────────────┘
+               │ (Load Balancing)
+       ┌───────┴───────┐
+       ▼               ▼
+┌─────────────┐ ┌─────────────┐
+│ Pod Adminer │ │ Pod Adminer │  (Deployment: 2 repliki, env: postgres-service)
+└──────┬──────┘ └──────┬──────┘
+       └───────┬───────┘
+               │ (Wewnętrzny DNS klastra: postgres-service:5432)
+               ▼
+┌───────────────────────────────┐
+│  Service: postgres-service    │  (type: ClusterIP, port 5432 -> 5432)
+└──────────────┬────────────────┘
+               │
+               ▼
+┌───────────────────────────────┐
+│  Pod PostgreSQL (1 replika)   │  (ConfigMap + Secret)
+└──────────────┬────────────────┘
+               │ montuje /var/lib/postgresql/data
+               ▼
+┌───────────────────────────────┐
+│  PVC: postgres-pvc (1Gi)      │  (Trwały dysk przeżywający restarty Podów)
+└───────────────────────────────┘
+```
+### 2. Zastosowane komponenty i wnioski z wdrożenia
+
+* **Warstwa danych (`06-projekt-db/`):**
+  * **PostgreSQL (`Deployment`):** Uruchomiony w 1 replice (`postgres:16-alpine`), aby uniknąć konfliktów zapisu na pojedynczym wolumenie `ReadWriteOnce`.
+  * **Separacja konfiguracji (`ConfigMap` & `Secret`):** Nazwa bazy (`POSTGRES_DB`) i użytkownik (`POSTGRES_USER`) pobierane z `postgres-config` (`configMapKeyRef`), a hasło (`POSTGRES_PASSWORD`) wstrzykiwane bezpiecznie z `postgres-secret` (`secretKeyRef`).
+  * **Trwałość danych (`PVC`):** Wolumen `postgres-pvc` podmontowany pod `/var/lib/postgresql/data`. Zapisane rekordy przetrwały całkowite usunięcie Poda bazy danych.
+  * **Izolacja sieciowa (`ClusterIP`):** Serwis `postgres-service` udostępnia bazę na porcie `5432` wyłącznie wewnątrz klastra.
+
+* **Warstwa aplikacyjna (`07-projekt-app/`):**
+  * **Adminer (`Deployment`):** Uruchomiony w wielu replikach (`adminer:latest`), korzystający ze zmiennej `ADMINER_DEFAULT_SERVER=postgres-service`.
+  * **Service Discovery (CoreDNS):** Aplikacja nie używa adresów IP Podów – łączy się z bazą po stałej nazwie serwisu `postgres-service`, którą wewnętrzny DNS Kubernetesa tłumaczy na aktualny adres IP.
+  * **Dostęp zewnętrzny (`LoadBalancer`):** Serwis `adminer-service` mapuje zewnętrzny port `8081` na wewnętrzny port kontenera `8080`.
+
+---
+
+### 3. Przeprowadzone testy odporności (Chaos Engineering)
+
+| Scenariusz testowy | Wykonana akcja | Rezultat w klastrze |
+| :--- | :--- | :--- |
+| **1. Przetrwanie danych po awarii** | Usunięcie wszystkich Podów bazy i aplikacji (`kubectl delete pod -l ...`) | Deploymenty natychmiast odtworzyły Pody; dane w bazie pozostały nienaruszone dzięki `PVC`. |
+| **2. Skalowanie dynamiczne** | Zwiększenie replik aplikacji (`kubectl scale ... --replicas=4`) | `Service` automatycznie zarejestrował 4 nowe adresy IP Podów w puli `Endpoints`. |
+| **3. Błąd konfiguracji DNS** | Podmiana nazwy serwera bazy na nieistniejącą i przywrócenie poprawnej | Natychmiastowa diagnoza błędu połączenia oraz płynny powrót do pracy po korekcie manifestu (`kubectl apply`). |
