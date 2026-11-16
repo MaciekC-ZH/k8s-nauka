@@ -238,3 +238,30 @@ Projekt łączy wszystkie podstawowe mechanizmy Kubernetesa w jeden działający
 | **1. Przetrwanie danych po awarii** | Usunięcie wszystkich Podów bazy i aplikacji (`kubectl delete pod -l ...`) | Deploymenty natychmiast odtworzyły Pody; dane w bazie pozostały nienaruszone dzięki `PVC`. |
 | **2. Skalowanie dynamiczne** | Zwiększenie replik aplikacji (`kubectl scale ... --replicas=4`) | `Service` automatycznie zarejestrował 4 nowe adresy IP Podów w puli `Endpoints`. |
 | **3. Błąd konfiguracji DNS** | Podmiana nazwy serwera bazy na nieistniejącą i przywrócenie poprawnej | Natychmiastowa diagnoza błędu połączenia oraz płynny powrót do pracy po korekcie manifestu (`kubectl apply`). |
+
+## 📌 Etap 5: Izolacja Środowisk – Namespaces (Przestrzenie Nazw)
+
+### 1. Idea i zastosowanie
+* **Logiczny podział klastra:** Pozwala uruchomić wiele odizolowanych środowisk (np. `dev`, `staging`, `prod`) lub projektów na jednym fizycznym klastrze K8s.
+* **Izolacja nazw:** W obrębie tego samego Namespace'u nazwy obiektów muszą być unikalne, ale w dwóch różnych Namespace'ach mogą istnieć zasoby o identycznych nazwach (np. `postgres-service` w `dev` i `postgres-service` w `prod`).
+* **Zasoby lokalne vs globalne:**
+  * *Namespaced:* `Pod`, `Deployment`, `Service`, `ConfigMap`, `Secret`, `PVC`.
+  * *Cluster-scoped (globalne):* `Namespace`, `PersistentVolume` (PV), `Node`, `StorageClass`.
+
+---
+
+### 2. Komunikacja DNS między Namespace'ami
+* W ramach jednego Namespace'u wystarczy krótka nazwa serwisu: `http://<nazwa-serwisu>`
+* Między różnymi Namespace'ami wymagane jest podanie przestrzeni nazw:
+  `http://<nazwa-serwisu>.<nazwa-namespace>.svc.cluster.local` (w skrócie: `http://<nazwa-serwisu>.<nazwa-namespace>`).
+
+---
+
+### 3. Podręczne komendy dla Namespaces
+
+| Polecenie | Zastosowanie |
+| :--- | :--- |
+| `kubectl get ns` | Wyświetlenie wszystkich przestrzeni nazw w klastrze |
+| `kubectl get pods -n <nazwa>` | Wyświetlenie Podów tylko z wybranej przestrzeni nazw |
+| `kubectl get pods -A` | Wyświetlenie Podów ze wszystkich przestrzeni nazw jednocześnie |
+| `kubectl config set-context --current --namespace=<nazwa>` | Zmiana domyślnego Namespace'u w bieżącym kontekście (brak konieczności używania `-n`) |
