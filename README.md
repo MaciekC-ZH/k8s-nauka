@@ -265,3 +265,37 @@ Projekt łączy wszystkie podstawowe mechanizmy Kubernetesa w jeden działający
 | `kubectl get pods -n <nazwa>` | Wyświetlenie Podów tylko z wybranej przestrzeni nazw |
 | `kubectl get pods -A` | Wyświetlenie Podów ze wszystkich przestrzeni nazw jednocześnie |
 | `kubectl config set-context --current --namespace=<nazwa>` | Zmiana domyślnego Namespace'u w bieżącym kontekście (brak konieczności używania `-n`) |
+
+## 📌 Etap 6: Routing Ruchu HTTP/HTTPS – Ingress i Ingress Controller
+
+### 1. Idea i architektura
+* **Problem wielu portów i IP:** Wystawianie każdej aplikacji osobnym serwisem `LoadBalancer` jest kosztowne w chmurze i niewygodne (wymaga wielu adresów IP lub portów).
+* **Pojedynczy punkt wejścia:** **Ingress** działa w warstwie aplikacji (HTTP/HTTPS – warstwa 7 OSI) jako inteligentne Reverse Proxy przed całym klastrem.
+* **Dwa niezbędne elementy:**
+  * **`Ingress` (obiekt YAML):** Deklaratywny zestaw reguł routingu (np. przekierowanie ruchu na podstawie nazwy hosta lub ścieżki URL).
+  * **`Ingress Controller`:** Fizyczny komponent w klastrze (np. Pod z NGINX), który czyta reguły z obiektów `Ingress` i faktycznie kieruje ruch do wewnętrznych serwisów `ClusterIP`.
+
+```text
+[ Przeglądarka: alfa.localhost / beta.localhost ]
+                       │
+                       ▼
+       ┌───────────────────────────────┐
+       │   NGINX Ingress Controller    │  (Pojedyncza brama wejściowa)
+       └───────┬───────────────┬───────┘
+               │               │
+  host: alfa.localhost    host: beta.localhost
+               ▼               ▼
+    ┌─────────────────┐ ┌─────────────────┐
+    │ alfa-service    │ │ beta-service    │  (type: ClusterIP)
+    └─────────────────┘ └─────────────────┘
+```
+### 2. Praktyczne wnioski i komendy
+
+* **Subdomeny lokalne:** Przeglądarki automatycznie kierują ruch dla `*.localhost` na `127.0.0.1`, co pozwala testować routing po domenach bez edycji pliku `hosts`.
+* **Obejście zajętego portu 80 na hoście:** Gdy port `80` w systemie operacyjnym jest zajęty przez inną usługę (`EXTERNAL-IP: <pending>`), ruch do kontrolera można wystawić lokalnie na dowolnym wolnym porcie za pomocą przekierowania portów.
+
+| Polecenie | Zastosowanie |
+| :--- | :--- |
+| `kubectl get ingress` | Sprawdzenie reguł routingu, obsługiwanych hostów i przypisanego adresu |
+| `kubectl get pods,svc -n ingress-nginx` | Kontrola stanu samego kontrolera Ingress w jego dedykowanym Namespace |
+| `kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8085:80` | Lokalne wystawienie bramy Ingress na porcie `8085` |

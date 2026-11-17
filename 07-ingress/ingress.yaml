@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: moj-pierwszy-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: alfa.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: alfa-service
+                port:
+                  number: 80
+    - host: beta.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: beta-service
+                port:
+                  number: 80
