@@ -299,3 +299,13 @@ Projekt łączy wszystkie podstawowe mechanizmy Kubernetesa w jeden działający
 | `kubectl get ingress` | Sprawdzenie reguł routingu, obsługiwanych hostów i przypisanego adresu |
 | `kubectl get pods,svc -n ingress-nginx` | Kontrola stanu samego kontrolera Ingress w jego dedykowanym Namespace |
 | `kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8085:80` | Lokalne wystawienie bramy Ingress na porcie `8085` |
+
+### 3. Routing po ścieżkach URL (`path`) i `rewrite-target`
+
+* **Problem dopasowania ścieżek:** Gdy aplikacja wewnątrz kontenera nasłuchuje na głównym katalogu `/`, a w Ingressie wystawiamy ją pod prefiksem (np. `/adminer`), konieczne jest wycięcie tego prefiksu przed przekazaniem zapytania do Poda.
+* **Przechwytywanie grup (Regex):**
+  * Zapis `path: /adminer(/|$)(.*)` z `pathType: ImplementationSpecific` dzieli ścieżkę na grupy:
+    * `$1` (`(/|$)`) – upewnia się, że po nazwie występuje ukośnik lub koniec adresu (chroni przed dopasowaniem np. `/adminer-test`).
+    * `$2` (`(.*)`) – przechwytuje całą resztę ścieżki (np. pliki `.css`, podstrony).
+  * Adnotacja `nginx.ingress.kubernetes.io/rewrite-target: /$2` przekazuje do kontenera wyłącznie `/` oraz zawartość drugiej grupy.
+* **Izolacja usług za Ingressem:** Serwisy ukryte za Ingressem (np. `adminer-service`) nie wymagają typu `LoadBalancer` – wystarcza wewnętrzny `ClusterIP`.

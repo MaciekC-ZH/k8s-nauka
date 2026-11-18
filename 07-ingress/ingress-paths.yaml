@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: projekt-path-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: projekt.localhost
+      http:
+        paths:
+          - path: /alfa(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: alfa-service
+                port:
+                  number: 80
+          - path: /beta(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: beta-service
+                port:
+                  number: 80
+          - path: /adminer(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: adminer-service
+                port:
+                  number: 80
