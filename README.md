@@ -309,3 +309,23 @@ Projekt łączy wszystkie podstawowe mechanizmy Kubernetesa w jeden działający
     * `$2` (`(.*)`) – przechwytuje całą resztę ścieżki (np. pliki `.css`, podstrony).
   * Adnotacja `nginx.ingress.kubernetes.io/rewrite-target: /$2` przekazuje do kontenera wyłącznie `/` oraz zawartość drugiej grupy.
 * **Izolacja usług za Ingressem:** Serwisy ukryte za Ingressem (np. `adminer-service`) nie wymagają typu `LoadBalancer` – wystarcza wewnętrzny `ClusterIP`.
+
+## 📌 Etap 7: Kontrola Zdrowia Kontenerów – Liveness & Readiness Probes
+
+### 1. Różnica między sondami
+
+| Rodzaj sondy | Co sprawdza? | Reakcja Kubernetesa na awarię |
+| :--- | :--- | :--- |
+| **`readinessProbe`** *(Sonda gotowości)* | Czy aplikacja jest gotowa na przyjmowanie ruchu (np. zakończyła rozruch, ma połączenie z bazą)? | **Usuwa IP Poda z puli `Endpoints` serwisu** (`READY: 0/1`), odcinając ruch z `Service` i `Ingress`. **Nie restartuje** kontenera. |
+| **`livenessProbe`** *(Sonda żywotności)* | Czy główny proces aplikacji działa i nie uległ zakleszczeniu (deadlock)? | **Zabija i restartuje kontener** (`RESTARTS +1`), wymuszając powrót do zdrowego stanu. |
+| **`startupProbe`** *(Sonda startowa)* | Czy powolna aplikacja zakończyła swoje pierwsze uruchamianie? | Wstrzymuje działanie pozostałych sond do momentu pierwszego sukcesu (chroni przed przedwczesnym zabiciem przy długim starcie). |
+
+---
+
+### 2. Mechanizmy sprawdzania i wnioski praktyczne
+
+* **Trzy metody testowania:**
+  * `httpGet` – sprawdzenie kodu odpowiedzi HTTP (`200–399` = sukces) na wskazanym porcie i ścieżce (np. `/healthz`).
+  * `tcpSocket` – próba nawiązania połączenia TCP na wskazanym porcie (np. `5432` dla baz danych).
+  * `exec` – wykonanie polecenia wewnątrz kontenera (kod wyjścia `0` = sukces).
+* **Zasada separacji:** `livenessProbe` powinna sprawdzać wyłącznie stan wewnętrzny samego procesu aplikacji, a nie zewnętrznych zależności (np. bazy danych), aby chwilowa niedostępność bazy nie wywołała lawiny restartów wszystkich Podów.

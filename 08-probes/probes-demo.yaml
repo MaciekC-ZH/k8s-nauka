@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: probes-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: probes-demo
+  template:
+    metadata:
+      labels:
+        app: probes-demo
+    spec:
+      containers:
+        - name: web
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          # Na starcie tworzymy oba pliki sygnalizujące zdrowie i gotowość, a potem uruchamiamy nginx
+          command: ["/bin/sh", "-c"]
+          args:
+            - touch /tmp/healthy /tmp/ready && nginx -g 'daemon off;'
+          readinessProbe:
+            exec:
+              command: ["cat", "/tmp/ready"]
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 2
+          livenessProbe:
+            exec:
+              command: ["cat", "/tmp/healthy"]
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probes-service
+spec:
+  type: ClusterIP
+  selector:
+    app: probes-demo
+  ports:
+    - port: 80
+      targetPort: 80
