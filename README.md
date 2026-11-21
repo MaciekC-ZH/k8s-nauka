@@ -329,3 +329,19 @@ Projekt łączy wszystkie podstawowe mechanizmy Kubernetesa w jeden działający
   * `tcpSocket` – próba nawiązania połączenia TCP na wskazanym porcie (np. `5432` dla baz danych).
   * `exec` – wykonanie polecenia wewnątrz kontenera (kod wyjścia `0` = sukces).
 * **Zasada separacji:** `livenessProbe` powinna sprawdzać wyłącznie stan wewnętrzny samego procesu aplikacji, a nie zewnętrznych zależności (np. bazy danych), aby chwilowa niedostępność bazy nie wywołała lawiny restartów wszystkich Podów.
+
+## 📌 Etap 8: Zarządzanie Zasobami – Resources (`requests` i `limits`)
+
+### 1. Różnica między `requests` a `limits`
+
+| Parametr | Rola w klastrze | Kto egzekwuje? |
+| :--- | :--- | :--- |
+| **`requests`** *(Gwarancja)* | Minimalna ilość CPU i RAM rezerwowana dla kontenera przed startem. | **Scheduler** – jeśli żaden węzeł nie ma tyle wolnych zasobów, Pod pozostaje w stanie **`Pending`**. |
+| **`limits`** *(Twardy sufit)* | Maksymalna ilość zasobów, jaką kontener może zużyć w szczycie obciążenia. | **Kubelet & Linux Kernel** – blokują przekroczenie wyznaczonej granicy. |
+
+---
+
+### 2. Reakcja systemu na przekroczenie limitów i jednostki
+
+* **Przekroczenie limitu CPU (`Throttling`):** Procesor jest zasobem ściśliwym – kontener **nie jest zabijany**, lecz dławiony (aplikacja zwalnia, ale działa dalej). Jednostki: `1000m` = `1` pełny rdzeń vCPU.
+* **Przekroczenie limitu RAM (`OOMKilled`):** Pamięć jest zasobem nieściśliwym – jądro Linuxa natychmiast **zabija kontener** (status `OOMKilled` i wzrost `RESTARTS`). Jednostki: `64Mi`, `256Mi`, `1Gi`.
