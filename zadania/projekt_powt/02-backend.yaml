@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: shop-prod
+data:
+  APP_MESSAGE: "Witaj w API Sklepu (wersja produkcyjna)"
