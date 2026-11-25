@@ -345,3 +345,19 @@ Projekt łączy wszystkie podstawowe mechanizmy Kubernetesa w jeden działający
 
 * **Przekroczenie limitu CPU (`Throttling`):** Procesor jest zasobem ściśliwym – kontener **nie jest zabijany**, lecz dławiony (aplikacja zwalnia, ale działa dalej). Jednostki: `1000m` = `1` pełny rdzeń vCPU.
 * **Przekroczenie limitu RAM (`OOMKilled`):** Pamięć jest zasobem nieściśliwym – jądro Linuxa natychmiast **zabija kontener** (status `OOMKilled` i wzrost `RESTARTS`). Jednostki: `64Mi`, `256Mi`, `1Gi`.
+
+## 🏆 Projekt Warsztatowy #2: Produkcyjna Aplikacja Trójwarstwowa (`shop-prod`)
+
+Kompletne, odizolowane środowisko wdrożeniowe łączące wszystkie kluczowe mechanizmy Kubernetesa:
+
+* **Izolacja (`Namespace`):** Wszystkie zasoby wydzielone w przestrzeni nazw `shop-prod`.
+* **Warstwa Prezentacji i API (`Frontend` + `Backend`):**
+  * Po 2 repliki każdego mikroserwisu (`nginx:alpine` oraz `hashicorp/http-echo`) ukryte za wewnętrznymi serwisami `ClusterIP`.
+  * Konfiguracja wstrzykiwana dynamicznie przez `ConfigMap` (`backend-config`).
+  * Kontrola stanu za pomocą sond `httpGet` (`readinessProbe` + `livenessProbe`) oraz limity CPU/RAM (`requests`/`limits`).
+* **Brama Wejściowa (`Ingress`):**
+  * Wspólna domena `sklep.localhost` z routingiem opartym o ścieżki URL (`/` $\rightarrow$ Frontend, `/api` $\rightarrow$ Backend) z wykorzystaniem `rewrite-target: /$2`.
+* **Warstwa Danych (`PostgreSQL`):**
+  * Dane uwierzytelniające przechowywane w `Secret` (`db-secret`) i montowane przez `envFrom`.
+  * Trwałość danych zapewniona przez `PersistentVolumeClaim` (`db-pvc`, `1Gi`) z podkatalogiem `subPath: postgres`.
+  * Monitorowanie dostępności portu `5432` przy pomocy sond `tcpSocket`.
