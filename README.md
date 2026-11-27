@@ -361,3 +361,19 @@ Kompletne, odizolowane środowisko wdrożeniowe łączące wszystkie kluczowe me
   * Dane uwierzytelniające przechowywane w `Secret` (`db-secret`) i montowane przez `envFrom`.
   * Trwałość danych zapewniona przez `PersistentVolumeClaim` (`db-pvc`, `1Gi`) z podkatalogiem `subPath: postgres`.
   * Monitorowanie dostępności portu `5432` przy pomocy sond `tcpSocket`.
+
+## 🏆 Projekt Warsztatowy #3: Platforma Blogowa CMS (`blog-prod`)
+
+Kompletna architektura CMS złożona z trzech współpracujących usług w izolowanym środowisku `blog-prod`:
+
+* **Baza Danych (`MySQL 8.0`):**
+  * Dane dostępowe przechowywane w `Secret` (`mysql-secret`) i wstrzykiwane w całości przez `envFrom`.
+  * Trwałość plików bazy zapewniona przez `PersistentVolumeClaim` (`mysql-pvc`, `2Gi`) montowany z parametrem `subPath: mysql`.
+  * Dostępność monitorowana sondami `tcpSocket` na porcie `3306` oraz dedykowanymi limitami pamięci (`1Gi`).
+* **Panel Administracyjny (`Adminer`):**
+  * Usługa pomocnicza (`ClusterIP`, port `80` $\rightarrow$ `8080`) umożliwiająca zarządzanie bazą `mysql-service` przez przeglądarkę.
+* **Warstwa Aplikacji (`WordPress`):**
+  * 2 repliki (`wordpress:php8.2-apache`) łączące się z bazą za pomocą mapowania konkretnych kluczy z sekretu (`secretKeyRef`).
+  * Kontrola gotowości i żywotności za pomocą sond `httpGet`.
+* **Brama Wejściowa (`Ingress`):**
+  * Wspólna domena `blog.localhost` obsługująca jednocześnie ruch aplikacji głównej (`/` $\rightarrow$ `wordpress-service`) oraz panelu bazy (`/db` $\rightarrow$ `adminer-service`) przy użyciu `rewrite-target: /$2`.
